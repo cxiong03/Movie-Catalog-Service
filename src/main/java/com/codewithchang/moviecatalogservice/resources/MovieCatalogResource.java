@@ -3,6 +3,8 @@ package com.codewithchang.moviecatalogservice.resources;
 import com.codewithchang.moviecatalogservice.models.CatalogItem;
 import com.codewithchang.moviecatalogservice.models.Movie;
 import com.codewithchang.moviecatalogservice.models.Rating;
+import com.codewithchang.moviecatalogservice.models.UserRating;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,16 +31,23 @@ public class MovieCatalogResource {
 
     @RequestMapping("/{userId}")
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
+        UserRating ratings = restTemplate.getForObject("http://localhost:8083/ratingsdata/users/foo" + userId, UserRating.class);
 
-        List<Rating> ratings = Arrays.asList(
-                new Rating("1234", 4),
-                new Rating("5678", 3)
-        );
-
-        return ratings.stream().map(rating -> {
+        return ratings.getUserRating().stream().map(rating -> {
+            // For each movie ID, call movie info service and get details
             Movie movie = restTemplate.getForObject("http://localhost:8082/movies/" + rating.getMovieId(), Movie.class);
+            // Put them all together
+            return new CatalogItem(movie.getName(), "Test", rating.getRating());
+        })
+                .collect(Collectors.toList());
 
-            /* Movie movie = webClientBuilder.build()
+    }
+}
+
+
+
+
+ /* Movie movie = webClientBuilder.build()
                     .get()
                     .uri("http://localhost:8082/movies/" + rating.getMovieId())
                     .retrieve()
@@ -45,14 +55,3 @@ public class MovieCatalogResource {
                     .block();
 
              */
-
-            return new CatalogItem(movie.getName(), "Test", rating.getRating());
-        })
-                .collect(Collectors.toList());
-
-        // For each movie ID, call movie info service and get details
-
-        // Put them all together
-
-    }
-}
